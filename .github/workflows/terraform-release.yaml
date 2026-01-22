@@ -1,4 +1,4 @@
-name: Terraform Release
+name: Terraform Release (Reusable)
 
 on:
   workflow_call:
@@ -9,7 +9,7 @@ on:
         type: string
         default: 'lts/*'
     secrets:
-      github_token:
+      token:
         description: 'GitHub token for releases'
         required: true
 
@@ -45,5 +45,5 @@ jobs:
 
       - name: Run semantic-release
         env:
-          GITHUB_TOKEN: ${{ secrets.github_token }}
+          GITHUB_TOKEN: ${{ secrets.token }}
         run: npx semantic-release
