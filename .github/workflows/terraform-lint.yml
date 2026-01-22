@@ -1,0 +1,99 @@
+name: Terraform Lint (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      terraform_version:
+        description: 'Terraform version to use'
+        required: false
+        type: string
+        default: '1.14.3'
+      working_directory:
+        description: 'Working directory'
+        required: false
+        type: string
+        default: '.'
+      tflint_version:
+        description: 'TFLint version to use'
+        required: false
+        type: string
+        default: 'latest'
+
+jobs:
+  terraform-fmt:
+    name: Terraform Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+
+      - name: Terraform Format Check
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform fmt -check -recursive
+
+  tflint:
+    name: TFLint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: ${{ inputs.tflint_version }}
+
+      - name: Initialize TFLint
+        working-directory: ${{ inputs.working_directory }}
+        run: tflint --init
+
+      - name: Run TFLint
+        working-directory: ${{ inputs.working_directory }}
+        run: tflint --recursive --format compact
+
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+
+      - name: Find Terraform directories
+        id: find-dirs
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          dirs=$(find . -type f -name "*.tf" ! -path "*/.terraform/*" -exec dirname {} \; | sort -u)
+          echo "dirs<<EOF" >> $GITHUB_OUTPUT
+          echo "$dirs" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Terraform Init and Validate
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          failed=0
+          while IFS= read -r dir; do
+            if [ -n "$dir" ]; then
+              echo "Validating $dir..."
+              cd "$dir"
+              if terraform init -backend=false > /dev/null 2>&1; then
+                if ! terraform validate; then
+                  echo "❌ Validation failed in $dir"
+                  failed=1
+                fi
+              else
+                echo "⚠️  Skipping $dir (init failed - may not be a root module)"
+              fi
+              cd "$GITHUB_WORKSPACE/${{ inputs.working_directory }}"
+            fi
+          done <<< "${{ steps.find-dirs.outputs.dirs }}"
+          exit $failed
