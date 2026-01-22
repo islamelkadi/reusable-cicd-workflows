@@ -1,0 +1,49 @@
+name: Terraform Release
+
+on:
+  workflow_call:
+    inputs:
+      node_version:
+        description: 'Node.js version'
+        required: false
+        type: string
+        default: 'lts/*'
+    secrets:
+      github_token:
+        description: 'GitHub token for releases'
+        required: true
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+
+      - name: Install semantic-release
+        run: |
+          npm install -g \
+            semantic-release@23 \
+            @semantic-release/git@10 \
+            @semantic-release/changelog@6 \
+            @semantic-release/github@10 \
+            @semantic-release/commit-analyzer@11 \
+            @semantic-release/release-notes-generator@12 \
+            conventional-changelog-conventionalcommits@7
+
+      - name: Run semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.github_token }}
+        run: npx semantic-release
