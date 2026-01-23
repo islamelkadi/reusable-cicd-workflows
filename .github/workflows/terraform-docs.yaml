@@ -1,17 +1,23 @@
-name: Terraform Docs Check
+name: Terraform Docs Check (Reusable)
 
 on:
-  pull_request:
-    paths:
-      - '**.tf'
-      - '.terraform-docs.yaml'
-      - '.github/workflows/terraform-docs.yml'
-  push:
-    branches:
-      - main
-    paths:
-      - '**.tf'
-      - '.terraform-docs.yaml'
+  workflow_call:
+    inputs:
+      working_directory:
+        description: 'Working directory'
+        required: false
+        type: string
+        default: '.'
+      config_file:
+        description: 'Terraform docs config file path'
+        required: false
+        type: string
+        default: '.terraform-docs.yaml'
+      output_file:
+        description: 'Output file for terraform docs'
+        required: false
+        type: string
+        default: 'README.md'
 
 jobs:
   terraform-docs:
@@ -26,11 +32,11 @@ jobs:
       - name: Render terraform docs
         uses: terraform-docs/gh-actions@v1.2.0
         with:
-          working-dir: .
-          output-file: README.md
+          working-dir: ${{ inputs.working_directory }}
+          output-file: ${{ inputs.output_file }}
           output-method: inject
           git-push: false
-          config-file: .terraform-docs.yaml
+          config-file: ${{ inputs.config_file }}
 
       - name: Check for changes
         id: check
