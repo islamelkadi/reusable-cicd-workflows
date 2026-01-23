@@ -1,0 +1,64 @@
+name: Terraform Docs Check
+
+on:
+  pull_request:
+    paths:
+      - '**.tf'
+      - '.terraform-docs.yaml'
+      - '.github/workflows/terraform-docs.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - '**.tf'
+      - '.terraform-docs.yaml'
+
+jobs:
+  terraform-docs:
+    name: Check Terraform Docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Render terraform docs
+        uses: terraform-docs/gh-actions@v1.2.0
+        with:
+          working-dir: .
+          output-file: README.md
+          output-method: inject
+          git-push: false
+          config-file: .terraform-docs.yaml
+
+      - name: Check for changes
+        id: check
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Show diff
+        if: steps.check.outputs.changed == 'true'
+        run: git diff
+
+      - name: Comment on PR
+        if: steps.check.outputs.changed == 'true' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ **Terraform Documentation is out of date**\n\nPlease run `terraform-docs markdown table --output-file README.md --output-mode inject .` to update the documentation.'
+            })
+
+      - name: Fail if docs are out of date
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          echo "❌ Terraform documentation is out of date!"
+          exit 1
