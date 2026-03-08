@@ -43,10 +43,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@v4
         with:
           tflint_version: ${{ inputs.tflint_version }}
+
+      - name: Terraform Init (for module resolution)
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform init -backend=false
+        continue-on-error: true
 
       - name: Initialize TFLint
         working-directory: ${{ inputs.working_directory }}
