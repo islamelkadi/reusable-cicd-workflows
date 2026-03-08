@@ -31,3 +31,4 @@ jobs:
           output_format: cli
           quiet: true
           compact: true
+          download_external_modules: true
