@@ -32,3 +32,4 @@ jobs:
           quiet: true
           compact: true
           download_external_modules: true
+          skip_path: .external_modules
